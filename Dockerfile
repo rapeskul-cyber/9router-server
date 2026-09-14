@@ -13,14 +13,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# 9Router installed globally
+# Install 9Router secara global
 RUN npm install -g 9router@latest
 
 COPY supervisor.py ./
 
 RUN mkdir -p /data && chmod 777 /data
 
-# Catatan: Baris VOLUME dihapus karena Railway tidak mengizinkannya di Dockerfile.
-# Jika butuh data tersimpan permanen, buat Volume langsung via Dashboard Railway ke path /data
+# Catatan: Baris VOLUME dihapus agar tidak error di Railway.
+# Persistent data bisa diset lewat menu Volume di Dashboard Railway (/data).
 
 CMD ["python3", "supervisor.py"]
