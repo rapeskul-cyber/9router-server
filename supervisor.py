@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
 """
-9Router 24/7 Linux Server Supervisor
-------------------------------------
+9Router 24/7 Linux Server Supervisor (Railway Compatible)
+-------------------------------------------------------
 Runs 9Router + optional Cloudflare tunnel + sync to Hugging Face panel/backup.
-Safe for Linux VPS (Ubuntu/Debian), Docker, and systemd.
-
-All secrets come from environment variables — zero hardcoded credentials:
-  - HF_TOKEN       : Hugging Face personal access token (optional, for panel/backup)
-  - PANEL_REPO     : HF Space for status.json (default: sekenhwu/9router-static)
-  - BACKUP_REPO    : HF private dataset for DB backup (default: sekenhwu/9router-backup)
-  - PORT           : 9Router port (default: 20128)
-  - ROUTER_DATA    : 9Router data directory (default: ~/.9router)
-  - ENABLE_TUNNEL  : "1" to start cloudflared quick tunnel (default: 1)
+Safe for Linux VPS, Railway, Docker, and systemd.
 """
 
 import json
@@ -35,6 +27,7 @@ PANEL_REPO = os.environ.get("PANEL_REPO", "sekenhwu/9router-static").strip()
 BACKUP_REPO = os.environ.get("BACKUP_REPO", "sekenhwu/9router-backup").strip()
 BACKUP_BRANCH = os.environ.get("BACKUP_BRANCH", "backup").strip()
 
+# Railway menginjeksi PORT secara otomatis
 APP_PORT = int(os.environ.get("PORT", "20128"))
 APP_URL = f"http://127.0.0.1:{APP_PORT}"
 ENABLE_TUNNEL = os.environ.get("ENABLE_TUNNEL", "1").strip() != "0"
@@ -96,7 +89,7 @@ def http_put(url: str, body: bytes, headers: dict, timeout: float = 30) -> int:
 # ----------------------------- CLOUDFLARED ----------------------------------
 def ensure_cloudflared() -> Path:
     if shutil.which("cloudflared"):
-        return Path(shutil.which("cloudflared"))  # type: ignore
+        return Path(shutil.which("cloudflared"))
     if CLOUDFLARED_BIN.exists() and os.access(CLOUDFLARED_BIN, os.X_OK):
         return CLOUDFLARED_BIN
 
@@ -125,25 +118,25 @@ def is_app_alive() -> bool:
 
 
 def start_app():
-    """Start 9Router if it is not answering. The npm bin is just `9router`
-    (it serves on PORT on its own — there is no `start` subcommand)."""
+    """Start 9Router if it is not answering."""
     if is_app_alive():
         return None
     exe = shutil.which("9router")
     if not exe:
-        # fall back to the globally installed package entry point
         exe = str(BASE / "node_modules" / ".bin" / "9router")
         if not Path(exe).exists():
             log("9router binary not found. Install it: npm install -g 9router")
             return None
-    log(f"Starting 9Router: {exe}")
+            
+    log(f"Starting 9Router on port {APP_PORT} (host 0.0.0.0)...")
     env = os.environ.copy()
     env["PORT"] = str(APP_PORT)
+    env["HOST"] = "0.0.0.0"
+    
     try:
+        # Menghubungkan stdout/stderr langsung agar terbaca di logs Railway
         proc = subprocess.Popen(
             [exe],
-            stdout=open(BASE / "9router.log", "a", encoding="utf-8"),
-            stderr=subprocess.STDOUT,
             env=env,
             start_new_session=True,
         )
@@ -182,7 +175,7 @@ def run_tunnel():
             continue
 
         with open(tunnel_log, "a", encoding="utf-8") as lf:
-            for line in p.stdout:  # type: ignore
+            for line in p.stdout:
                 lf.write(line)
                 lf.flush()
                 m = url_re.search(line)
