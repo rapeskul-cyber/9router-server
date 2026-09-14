@@ -1,14 +1,8 @@
-# 9Router 24/7 — Linux server image
-# Runs 9Router (Node) + supervisor (Python) + auto cloudflared tunnel.
-# Build:  docker build -t 9router-server .
-# Run:    docker run -d --name 9router --restart unless-stopped -p 20128:20128 \
-#           -e HF_TOKEN=*** -v 9router-data:/data 9router-server
-
+# 9Router 24/7 — Linux server image for Railway
 FROM node:22-bookworm-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=20128 \
     ROUTER_DATA=/data \
     ENABLE_TUNNEL=1 \
     DEBIAN_FRONTEND=noninteractive
@@ -19,17 +13,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# 9Router installed globally so `npx` never needs a network round-trip at runtime
+# 9Router installed globally
 RUN npm install -g 9router@latest
 
 COPY supervisor.py ./
 
 RUN mkdir -p /data && chmod 777 /data
 
-VOLUME ["/data"]
-EXPOSE 20128
-
-HEALTHCHECK --interval=60s --timeout=10s --start-period=90s --retries=5 \
-  CMD curl -fsS "http://127.0.0.1:${PORT}/api/health" || exit 1
+# Catatan: Baris VOLUME dihapus karena Railway tidak mengizinkannya di Dockerfile.
+# Jika butuh data tersimpan permanen, buat Volume langsung via Dashboard Railway ke path /data
 
 CMD ["python3", "supervisor.py"]
