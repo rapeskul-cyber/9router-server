@@ -2,8 +2,7 @@
 """
 9Router 24/7 Linux Server Supervisor (Railway Compatible)
 -------------------------------------------------------
-Runs 9Router + optional Cloudflare tunnel + sync to Hugging Face panel/backup.
-Safe for Linux VPS, Railway, Docker, and systemd.
+Runs 9Router + Cloudflare tunnel + sync to Hugging Face panel/backup.
 """
 
 import json
@@ -27,8 +26,8 @@ PANEL_REPO = os.environ.get("PANEL_REPO", "sekenhwu/9router-static").strip()
 BACKUP_REPO = os.environ.get("BACKUP_REPO", "sekenhwu/9router-backup").strip()
 BACKUP_BRANCH = os.environ.get("BACKUP_BRANCH", "backup").strip()
 
-# Railway menginjeksi PORT secara otomatis
-APP_PORT = int(os.environ.get("PORT", "20128"))
+# Kunci port ke 20128 agar cocok dengan konfigurasi Networking Railway & Cloudflare
+APP_PORT = 20128
 APP_URL = f"http://127.0.0.1:{APP_PORT}"
 ENABLE_TUNNEL = os.environ.get("ENABLE_TUNNEL", "1").strip() != "0"
 
@@ -118,7 +117,7 @@ def is_app_alive() -> bool:
 
 
 def start_app():
-    """Start 9Router if it is not answering."""
+    """Start 9Router dan paksa binding ke 0.0.0.0 serta port 20128."""
     if is_app_alive():
         return None
     exe = shutil.which("9router")
@@ -128,23 +127,31 @@ def start_app():
             log("9router binary not found. Install it: npm install -g 9router")
             return None
             
-    log(f"Starting 9Router on port {APP_PORT} (host 0.0.0.0)...")
+    log(f"Starting 9Router on port {APP_PORT} (0.0.0.0)...")
     env = os.environ.copy()
     env["PORT"] = str(APP_PORT)
     env["HOST"] = "0.0.0.0"
     
+    # Jalankan dengan parameter eksplisit agar listen ke interface publik container
+    cmd = [exe, "--port", str(APP_PORT), "--host", "0.0.0.0"]
+    
     try:
-        # Menghubungkan stdout/stderr langsung agar terbaca di logs Railway
         proc = subprocess.Popen(
-            [exe],
+            cmd,
             env=env,
             start_new_session=True,
         )
         state["app_restarts"] += 1
         return proc
     except Exception as e:
-        log(f"Failed starting 9Router: {e}")
-        return None
+        # Fallback jika CLI 9router tidak menerima argumen --host/--port
+        try:
+            proc = subprocess.Popen([exe], env=env, start_new_session=True)
+            state["app_restarts"] += 1
+            return proc
+        except Exception as err:
+            log(f"Failed starting 9Router: {err}")
+            return None
 
 
 def run_tunnel():
