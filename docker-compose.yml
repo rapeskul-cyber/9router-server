@@ -1,0 +1,20 @@
+services:
+  9router:
+    build: .
+    container_name: 9router
+    restart: unless-stopped
+    ports:
+      - "20128:20128"
+    environment:
+      # never commit real values — copy .env.example to .env first
+      HF_TOKEN: ${HF_TOKEN:-}
+      PANEL_REPO: ${PANEL_REPO:-sekenhwu/9router-static}
+      BACKUP_REPO: ${BACKUP_REPO:-sekenhwu/9router-backup}
+      ENABLE_TUNNEL: ${ENABLE_TUNNEL:-1}
+      PORT: 20128
+    volumes:
+      - 9router-data:/data
+      - ./logs:/app/logs
+
+volumes:
+  9router-data:

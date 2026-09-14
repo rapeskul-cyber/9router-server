@@ -1,0 +1,18 @@
+# secrets & local state — never commit
+.env
+.env.*
+!.env.example
+
+# runtime artefacts
+supervisor.log
+9router.log
+tunnel.log
+tunnel-state.json
+backup-temp.sqlite
+9router-backup.zip
+cloudflared
+cloudflared.exe
+__pycache__/
+*.pyc
+logs/
+data/

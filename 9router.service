@@ -1,0 +1,30 @@
+# systemd unit: run the supervisor directly (no Docker).
+# Install:
+#   sudo cp 9router.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now 9router
+#   journalctl -u 9router -f
+#
+# Edit the paths/user below to match your server, and put HF_TOKEN into
+# /etc/9router.env (chmod 600) instead of this file.
+
+[Unit]
+Description=9Router 24/7 (app + cloudflared tunnel + HF panel/backup)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/9router-server
+EnvironmentFile=-/etc/9router.env
+Environment=PORT=20128
+Environment=ROUTER_DATA=/home/ubuntu/.9router
+ExecStart=/usr/bin/python3 /opt/9router-server/supervisor.py
+Restart=always
+RestartSec=10
+# keep the tunnel/app from being killed by the default 90s stop timeout
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
