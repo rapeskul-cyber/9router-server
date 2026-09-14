@@ -1,26 +1,19 @@
-# 9Router 24/7 — Linux server image for Railway
 FROM node:22-bookworm-slim
 
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
+ENV PORT=20128 \
     ROUTER_DATA=/data \
-    ENABLE_TUNNEL=1 \
     DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-pip ca-certificates curl xz-utils \
+        ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install 9Router secara global
 RUN npm install -g 9router@latest
-
-COPY supervisor.py ./
-
 RUN mkdir -p /data && chmod 777 /data
 
-# Catatan: Baris VOLUME dihapus agar tidak error di Railway.
-# Persistent data bisa diset lewat menu Volume di Dashboard Railway (/data).
+EXPOSE 20128
 
-CMD ["python3", "supervisor.py"]
+# Jalankan 9router di background, lalu tahan container agar tidak exit
+CMD ["sh", "-c", "9router --host 0.0.0.0 --port 20128 < /dev/null & tail -f /dev/null"]
